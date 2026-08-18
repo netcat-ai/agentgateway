@@ -735,6 +735,14 @@ impl HTTPProxy {
 			ctx.bind = Some(bind_name.clone());
 		});
 
+		// Proxy clients (browsers, curl) send credentials on CONNECT as
+		// Proxy-Authorization; basicAuth reads Authorization by default, so
+		// promote the value before hop-by-hop stripping removes it.
+		if req.method() == ::http::Method::CONNECT
+			&& let Some(value) = req.headers().get(http::header::PROXY_AUTHORIZATION).cloned()
+		{
+			req.headers_mut().insert(http::header::AUTHORIZATION, value);
+		}
 		sensitive_headers(&mut req);
 		normalize_uri(log.tls_info.as_ref(), &mut req)
 			.map_err(ProxyError::Processing)
